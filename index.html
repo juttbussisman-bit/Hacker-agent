@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI ASSISTANCE</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+
+body{
+height:100vh;
+display:flex;
+align-items:center;
+justify-content:center;
+background:linear-gradient(45deg,#0f0c29,#302b63,#24243e);
+overflow:hidden;
+color:white;
+transition: background 0.5s, color 0.5s;
+}
+body.light{
+background:linear-gradient(45deg,#e0e0e0,#ffffff,#cfcfcf);
+color:#111;
+}
+
+.login-card{
+background: rgba(255,255,255,0.1);
+backdrop-filter: blur(15px);
+border:1px solid rgba(255,255,255,0.2);
+padding:40px;
+border-radius:20px;
+width:400px;
+box-shadow:0 8px 32px 0 rgba(0,0,0,0.37);
+text-align:center;
+transition: background 0.5s;
+}
+body.light .login-card{
+background: rgba(255,255,255,0.8);
+color:#111;
+}
+
+h2{
+color:#fff;
+margin-bottom:30px;
+font-weight:300;
+letter-spacing:2px;
+}
+body.light h2{color:#111;}
+
+.input-group{
+margin-bottom:20px;
+text-align:left;
+}
+
+label{
+color:#ccc;
+font-size:0.8rem;
+display:block;
+margin-bottom:5px;
+margin-left:5px;
+}
+body.light label{color:#555;}
+
+input{
+width:100%;
+padding:12px 15px;
+background:rgba(255,255,255,0.05);
+border:1px solid rgba(255,255,255,0.2);
+border-radius:10px;
+color:#fff;
+outline:none;
+transition:0.3s;
+}
+input:focus{
+border-color:#00d2ff;
+background:rgba(255,255,255,0.1);
+}
+body.light input{color:#111; background:rgba(255,255,255,0.3); border:1px solid rgba(0,0,0,0.2);}
+
+button{
+width:100%;
+padding:12px;
+margin-top:20px;
+border:none;
+border-radius:10px;
+background:linear-gradient(to right,#00d2ff,#3a7bd5);
+color:white;
+font-weight:bold;
+cursor:pointer;
+transition:transform 0.2s,opacity 0.2s;
+}
+button:hover{
+transform:translateY(-2px);
+opacity:0.9;
+}
+
+.footer-links{
+margin-top:20px;
+font-size:0.8rem;
+color:#bbb;
+}
+body.light .footer-links{color:#555;}
+.footer-links a{color:#00d2ff; text-decoration:none; margin-left:5px;}
+
+.container{
+width:500px;
+display:none;
+flex-direction:column;
+}
+.chat-box{
+height:300px;
+overflow:auto;
+background:#111;
+padding:10px;
+margin-bottom:10px;
+border-radius:8px;
+}
+body.light .chat-box{background:#eee; color:#111;}
+.message-user{color:#00d2ff;}
+.message-ai{color:#ff00ff;}
+.timestamp{font-size:0.7em;color:#888;margin-left:5px;}
+</style>
+</head>
+<body>
+
+<div id="loginUI">
+<div class="login-card">
+<h2>WELCOME</h2>
+<div class="input-group">
+<label>Username</label>
+<input id="username" type="text" placeholder="Enter Username">
+</div>
+<div class="input-group">
+<label>Password</label>
+<input id="password" type="password" placeholder="••••••••">
+</div>
+<button onclick="login()">Sign In</button>
+<div class="footer-links">
+Don't have an account? <a href="#">Create one</a>
+</div>
+</div>
+</div>
+
+<div id="chatUI" class="container">
+<h2>JUTT ASSISTANCE</h2>
+<button onclick="toggleTheme()" style="margin-bottom:10px;">Toggle Dark/Light</button>
+<div class="chat-box" id="chatBox"></div>
+<input id="userInput" placeholder="Ask anything...">
+<button onclick="sendMsg()">Send</button>
+<button onclick="voiceInput()">🎤 Speak</button>
+<button onclick="clearChat()">Clear Chat</button>
+<button onclick="logout()">Logout</button>
+</div>
+
+<script>
+let storedUser="JUTT";
+let storedPass=localStorage.getItem("pass") || "JUTTSAAB1122";
+let chatMemory = JSON.parse(localStorage.getItem("chatMemory")) || [];
+let OPENAI_API_KEY="d5aeed74-0bc3-4b10-b7d7-4897d8bc46d6";
+
+/* ===== Theme toggle ===== */
+function toggleTheme(){document.body.classList.toggle("light");}
+
+/* ===== Login ===== */
+function login(){
+let u=username.value;
+let p=password.value;
+if(u===storedUser && p===storedPass){
+document.getElementById("loginUI").style.display="none";
+document.getElementById("chatUI").style.display="flex";
+loadChat();
+}else{alert("Wrong Credentials");}
+}
+
+/* ===== Chat Functions ===== */
+function addMessage(sender,text,cls){
+let chat=chatBox;
+let ts=new Date().toLocaleTimeString();
+chat.innerHTML+=`<p class="${cls}"><b>${sender}:</b> ${text} <span class="timestamp">${ts}</span></p>`;
+chat.scrollTop=chat.scrollHeight;
+chatMemory.push({role: sender==="You"?"user":"assistant", content:text});
+localStorage.setItem("chatMemory",JSON.stringify(chatMemory));
+}
+
+function loadChat(){
+chatBox.innerHTML="";
+chatMemory.forEach(msg=>{
+addMessage(msg.role==="user"?"You":"AI",msg.content,msg.role==="user"?"message-user":"message-ai");
+});
+}
+
+function clearChat(){
+chatMemory=[];
+localStorage.removeItem("chatMemory");
+chatBox.innerHTML="";
+}
+
+function logout(){
+chatUI.style.display="none";
+loginUI.style.display="block";
+}
+
+/* ===== AI Typing + Voice ===== */
+async function sendMsg(){
+let input=userInput.value;
+if(!input) return;
+addMessage("You",input,"message-user");
+userInput.value="";
+let response=await getAIResponse(input);
+await typeMessage("AI",response,"message-ai");
+speakText(response);
+}
+
+async function typeMessage(sender,text,cls){
+let chat=chatBox;
+let ts=new Date().toLocaleTimeString();
+let p=document.createElement("p");
+p.className=cls;
+p.innerHTML=`<b>${sender}:</b> `;
+chat.appendChild(p);
+chat.scrollTop=chat.scrollHeight;
+for(let i=0;i<text.length;i++){
+p.innerHTML+=text[i];
+chat.scrollTop=chat.scrollHeight;
+await new Promise(r=>setTimeout(r,15));
+}
+p.innerHTML+=` <span class="timestamp">${ts}</span>`;
+chatMemory.push({role:"assistant", content:text});
+localStorage.setItem("chatMemory",JSON.stringify(chatMemory));
+}
+
+/* ===== Voice Input ===== */
+function voiceInput(){
+if(!('webkitSpeechRecognition' in window)){
+alert("Voice input not supported in this browser."); return;
+}
+let recognition = new webkitSpeechRecognition();
+recognition.lang = 'en-US';
+recognition.interimResults=false;
+recognition.maxAlternatives=1;
+recognition.start();
+recognition.onresult=function(event){
+let speech=event.results[0][0].transcript;
+userInput.value=speech;
+sendMsg();
+}
+}
+
+/* ===== Voice Output ===== */
+function speakText(text){
+if(!('speechSynthesis' in window)) return;
+let utter=new SpeechSynthesisUtterance(text);
+utter.rate=1; utter.pitch=1;
+speechSynthesis.speak(utter);
+}
+
+/* ===== Real AI Response ===== */
+async function getAIResponse(message){
+try{
+let res=await fetch("https://api.openai.com/v1/chat/completions",{
+method:"POST",
+headers:{
+"Content-Type":"application/json",
+"Authorization":"Bearer "+OPENAI_API_KEY
+},
+body:JSON.stringify({
+model:"gpt-4o-mini",
+messages:[
+{role:"system",content:"You are JUTT ASSISTANCE AI, helpful, coding expert, cybersecurity assistant, smart general knowledge."},
+...chatMemory,
+{role:"user",content:message}
+]
+})
+});
+let data=await res.json();
+return data.choices[0].message.content;
+}catch(e){return "Error connecting to AI.";}
+}
+</script>
+</body>
+</html>
